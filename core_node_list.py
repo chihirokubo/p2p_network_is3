@@ -32,6 +32,12 @@ class CoreNodeList:
 			self.list = new_list
 			print('Current Core list: ',self.list)
 
+	def get_c_node_info(self):
+		"""
+		リストのトップにあるpeerを返却
+		"""
+		return list(self.list)[0]
+
 	def get_list(self):
 		"""
 		現在接続状況にあるpeerの一覧を返す

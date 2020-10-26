@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from MessageManager import *
 from core_node_list import CoreNodeList
+from edge_node_list import EdgeNodeList
 
 PING_INTERVAL = 1800  #30分
 
@@ -14,6 +15,7 @@ class ConnectionManager:
 		self.host = host
 		self.port = my_port
 		self.core_node_set = CoreNodeList()
+		self.edge_node_set = EdgeNodeList()
 		self.__add_peer((host,my_port))
 		self.message_manager = MessageManager()
 
@@ -99,7 +101,6 @@ class ConnectionManager:
 		if not data_sum:
 			return
 		result, reason, cmd, peer_port, payload = self.message_manager.parse(data_sum)
-		print(cmd)
 		status = (result, reason)
 
 		if status == ('error', ERR_PROTOCOL_UNMATCH):
@@ -132,6 +133,13 @@ class ConnectionManager:
 				cl = pickle.dumps(self.core_node_set.get_list(), 0).decode()
 				msg = self.message_manager.build(MSG_CORE_LIST, self.port, cl)
 				self.send_msg((addr[0], peer_port), msg)
+			elif cmd == MSG_ADD_AS_EDGE:
+				self.__add_edge_node((addr[0], peer_port))
+				cl = pickle.dumps(self.core_node_set.get_list(),0).decode()
+				msg = self.message_manager.build(MSG_CORE_LIST, self.port, cl)
+				self.send_msg((addr[0], peer_port), msg)
+			elif cmd == MSG_REMOVE_EDGE:
+				self.__remove_edge_node((addr[0], peer_port))
 			else:
 				print('received unknown command', cmd)
 				return
@@ -143,7 +151,7 @@ class ConnectionManager:
 				print('Refresh the core node list...')
 				new_core_set = pickle.loads(payload.encode('utf-8'))
 				print('lates core node list: ', new_core_set)
-				self.core_node_set = new_core_set
+				self.core_node_set.overwrite(new_core_set)
 			else:
 				print('received unknown command', cmd)
 				return
@@ -165,6 +173,17 @@ class ConnectionManager:
 		"""
 		self.core_node_set.remove(peer)
 
+	def __add_edge_node(self, edge):
+		"""
+		edgeノードをリストに追加する
+		"""
+		self.edge_node_set.add((edge))
+
+	def __remove_edge_node(self, edge):
+		"""
+		離脱したと判断されるedgeノードをリストから削除する
+		"""
+		self.edge_node_set.remove(edge)
 
 	def __check_peers_connection(self):
 		"""
